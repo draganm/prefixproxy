@@ -18,7 +18,11 @@ $ go get -u github.com/draganm/prefixproxy
 PrefixProxy is configured using command line arguments.
 Each argument has the form `<path>=<url>` where `<path>` is the path matcher and `<url>` is the URL of the backend where the request will be proxied to.
 
+By default, PrefixProxy listens on the port `5555`.
+This can be changed either by specifying the `--port=xxx` argument, or by setting the `PORT` environment variable.
+
 ```bash
 $ prefixproxy --port=8000 /=http://localhost:5000 /api/=http://localhost:5100
 ```
+
 
