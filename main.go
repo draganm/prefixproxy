@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/urfave/cli/v2"
@@ -24,24 +25,34 @@ func main() {
 		},
 
 		Action: func(c *cli.Context) error {
-			if c.NArg() != 1 {
-				return errors.New("Main proxy URL must be provided")
-			}
-
-			mainProxyURLString := c.Args().First()
-
-			mainProxyURL, err := url.Parse(mainProxyURLString)
-			if err != nil {
-				return errors.Wrapf(err, "while parsing URL %q", mainProxyURLString)
-			}
-
-			mainProxy := httputil.NewSingleHostReverseProxy(mainProxyURL)
 
 			mux := http.NewServeMux()
-			mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-				log.Println("forwarding request to main")
-				mainProxy.ServeHTTP(w, r)
-			})
+
+			for _, proxy := range c.Args().Slice() {
+				parts := strings.SplitN(proxy, "=", 2)
+
+				if len(parts) != 2 {
+					return errors.Errorf("malformed proxy %q", proxy)
+				}
+
+				path := parts[0]
+				urlString := parts[1]
+				url, err := url.Parse(urlString)
+
+				if err != nil {
+					return errors.Wrapf(err, "while parsing URL %q", urlString)
+				}
+
+				proxy := httputil.NewSingleHostReverseProxy(url)
+
+				log.Printf("proxy: %s => %s", path, urlString)
+
+				mux.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
+					log.Printf("[%s]: %s %s", urlString, r.Method, r.URL.Path)
+					proxy.ServeHTTP(w, r)
+				})
+
+			}
 
 			addr := fmt.Sprintf(":%d", c.Int("port"))
 			l, err := net.Listen("tcp", addr)
@@ -52,6 +63,8 @@ func main() {
 			s := &http.Server{
 				Handler: mux,
 			}
+
+			log.Println("listening on", addr)
 
 			return s.Serve(l)
 
