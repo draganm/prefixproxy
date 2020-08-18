@@ -151,7 +151,7 @@ func TestProxy(t *testing.T) {
 		binName,
 		"--port", "23533",
 		fmt.Sprintf("/=%s", mainBackend.url()),
-		fmt.Sprintf("/side/=%s", sideBackend.url()),
+		fmt.Sprintf("/side/,/other/=%s", sideBackend.url()),
 	)
 
 	defer shutdownProxy()
@@ -165,11 +165,18 @@ func TestProxy(t *testing.T) {
 		require.Equal(t, 1, len(mainBackend.getReceivedRequests()))
 	})
 
-	t.Run("proxy to main backend", func(t *testing.T) {
+	t.Run("proxy to first prefix backend", func(t *testing.T) {
 		res, err := http.Get(fmt.Sprintf("http://localhost:23533/side/123"))
 		require.NoError(t, err)
 		require.Equal(t, 200, res.StatusCode)
 		require.Equal(t, 1, len(sideBackend.getReceivedRequests()))
+	})
+
+	t.Run("proxy to second prefix backend", func(t *testing.T) {
+		res, err := http.Get(fmt.Sprintf("http://localhost:23533/other/123"))
+		require.NoError(t, err)
+		require.Equal(t, 200, res.StatusCode)
+		require.Equal(t, 2, len(sideBackend.getReceivedRequests()))
 	})
 
 }

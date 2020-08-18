@@ -35,7 +35,7 @@ func main() {
 					return errors.Errorf("malformed proxy %q", proxy)
 				}
 
-				path := parts[0]
+				pathsString := parts[0]
 				urlString := parts[1]
 				url, err := url.Parse(urlString)
 
@@ -43,14 +43,18 @@ func main() {
 					return errors.Wrapf(err, "while parsing URL %q", urlString)
 				}
 
+				paths := strings.Split(pathsString, ",")
+
 				proxy := httputil.NewSingleHostReverseProxy(url)
 
-				log.Printf("proxy: %s => %s", path, urlString)
+				for _, path := range paths {
+					log.Printf("proxy: %s => %s", path, urlString)
 
-				mux.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
-					log.Printf("[%s]: %s %s", urlString, r.Method, r.URL.Path)
-					proxy.ServeHTTP(w, r)
-				})
+					mux.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
+						log.Printf("[%s]: %s %s", urlString, r.Method, r.URL.Path)
+						proxy.ServeHTTP(w, r)
+					})
+				}
 
 			}
 
